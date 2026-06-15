@@ -1,0 +1,17 @@
+{
+  "name": "ai-probiotic-advisor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MVP for a rule-based AI probiotic recommendation advisor.",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "db:seed": "npm run db:seed --prefix server",
+    "build": "npm run build --prefix client",
+    "share": "npm run build && npm run start --prefix server",
+    "start": "npm run start --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
