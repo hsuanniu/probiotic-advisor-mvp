@@ -1,0 +1,39 @@
+{
+  "name": "四象生活 AI 健康顧問",
+  "short_name": "四象生活",
+  "description": "生活型態評估、腸道健康分數與 90 天益生菌追蹤工具。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "theme_color": "#1f5f8b",
+  "background_color": "#f5f8fa",
+  "categories": ["health", "lifestyle", "productivity"],
+  "lang": "zh-Hant",
+  "icons": [
+    {
+      "src": "/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
