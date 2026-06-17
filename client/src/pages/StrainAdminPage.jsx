@@ -27,7 +27,12 @@ export default function StrainAdminPage() {
   const [message, setMessage] = useState("");
 
   async function load() {
-    setStrains(await api.getStrains());
+    try {
+      setStrains(await api.getStrains());
+    } catch {
+      setStrains([]);
+      setMessage("目前無法連線到後端，菌種資料暫以空狀態顯示。");
+    }
   }
 
   useEffect(() => {
@@ -40,14 +45,18 @@ export default function StrainAdminPage() {
 
   async function submit(event) {
     event.preventDefault();
-    if (editingId) {
-      await api.updateStrain(editingId, form);
-    } else {
-      await api.createStrain(form);
+    try {
+      if (editingId) {
+        await api.updateStrain(editingId, form);
+      } else {
+        await api.createStrain(form);
+      }
+      await load();
+    } catch {
+      setMessage("目前無法連線到後端，請稍後再儲存菌種資料。");
     }
     setForm(emptyStrain);
     setEditingId(null);
-    await load();
   }
 
   function edit(strain) {
@@ -56,18 +65,27 @@ export default function StrainAdminPage() {
   }
 
   async function remove(id) {
-    await api.deleteStrain(id);
-    await load();
+    try {
+      await api.deleteStrain(id);
+      await load();
+    } catch {
+      setStrains((current) => current.filter((strain) => strain.id !== id));
+      setMessage("目前無法連線到後端，已先從畫面移除。");
+    }
   }
 
   async function favorite(strain) {
-    await api.createFavorite({
-      item_type: "strain",
-      item_id: strain.id,
-      item_name: strain.strain_name,
-      item_meta: { summary: `${strain.strain_code || "No code"} · ${strain.application_areas.join("、")}` }
-    });
-    setMessage(`已收藏：${strain.strain_name}`);
+    try {
+      await api.createFavorite({
+        item_type: "strain",
+        item_id: strain.id,
+        item_name: strain.strain_name,
+        item_meta: { summary: `${strain.strain_code || "No code"} · ${strain.application_areas.join("、")}` }
+      });
+      setMessage(`已收藏：${strain.strain_name}`);
+    } catch {
+      setMessage("目前無法連線到後端，收藏功能暫時無法儲存。");
+    }
     setTimeout(() => setMessage(""), 1800);
   }
 

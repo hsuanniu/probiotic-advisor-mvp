@@ -30,7 +30,12 @@ export default function ProductAdminPage() {
   const [message, setMessage] = useState("");
 
   async function load() {
-    setProducts(await api.getProducts());
+    try {
+      setProducts(await api.getProducts());
+    } catch {
+      setProducts([]);
+      setMessage("目前無法連線到後端，產品資料暫以空狀態顯示。");
+    }
   }
 
   useEffect(() => {
@@ -43,14 +48,18 @@ export default function ProductAdminPage() {
 
   async function submit(event) {
     event.preventDefault();
-    if (editingId) {
-      await api.updateProduct(editingId, form);
-    } else {
-      await api.createProduct(form);
+    try {
+      if (editingId) {
+        await api.updateProduct(editingId, form);
+      } else {
+        await api.createProduct(form);
+      }
+      await load();
+    } catch {
+      setMessage("目前無法連線到後端，請稍後再儲存產品資料。");
     }
     setForm(emptyProduct);
     setEditingId(null);
-    await load();
   }
 
   function edit(product) {
@@ -59,18 +68,27 @@ export default function ProductAdminPage() {
   }
 
   async function remove(id) {
-    await api.deleteProduct(id);
-    await load();
+    try {
+      await api.deleteProduct(id);
+      await load();
+    } catch {
+      setProducts((current) => current.filter((product) => product.id !== id));
+      setMessage("目前無法連線到後端，已先從畫面移除。");
+    }
   }
 
   async function favorite(product) {
-    await api.createFavorite({
-      item_type: "product",
-      item_id: product.id,
-      item_name: product.product_name,
-      item_meta: { summary: `${product.brand_name} · ${product.main_needs.join("、")}` }
-    });
-    setMessage(`已收藏：${product.product_name}`);
+    try {
+      await api.createFavorite({
+        item_type: "product",
+        item_id: product.id,
+        item_name: product.product_name,
+        item_meta: { summary: `${product.brand_name} · ${product.main_needs.join("、")}` }
+      });
+      setMessage(`已收藏：${product.product_name}`);
+    } catch {
+      setMessage("目前無法連線到後端，收藏功能暫時無法儲存。");
+    }
     setTimeout(() => setMessage(""), 1800);
   }
 

@@ -126,10 +126,20 @@ function calculateGutHealthScore(request) {
 }
 
 function getPlanRecommendation(score, request) {
-  const goal = request.primary_goal || "日常腸胃保養";
+  const goals = request.primary_goals?.length
+    ? request.primary_goals
+    : String(request.primary_goal || "日常腸胃保養").split("、").filter(Boolean);
+  const concerns = request.concerns || [];
+  const selected = [...goals, ...concerns];
+  const highNeeds = selected.filter((item) => ["長期營養支持", "高規格保養", "長期保養"].includes(item)).length;
+  const midNeeds = selected.filter((item) => ["熟齡健康管理", "女性日常保養", "睡眠壓力", "排便不規律"].includes(item)).length;
+
   if (
+    selected.includes("高規格保養") ||
+    highNeeds >= 2 ||
+    (highNeeds >= 1 && midNeeds >= 2) ||
     score < 48 ||
-    (["熟齡健康管理", "長期營養支持"].includes(goal) && request.stress_sleep === "經常睡不好或壓力較高")
+    (goals.some((goal) => ["熟齡健康管理", "長期營養支持"].includes(goal)) && request.stress_sleep === "經常睡不好或壓力較高")
   ) {
     return {
       level: "C",
@@ -142,7 +152,9 @@ function getPlanRecommendation(score, request) {
 
   if (
     score < 80 ||
-    ["熟齡健康管理", "長期營養支持", "女性日常保養"].includes(goal)
+    goals.some((goal) => ["熟齡健康管理", "長期營養支持", "女性日常保養"].includes(goal)) ||
+    concerns.some((concern) => ["長期保養", "熟齡保養", "排便不規律", "睡眠壓力"].includes(concern)) ||
+    midNeeds >= 2
   ) {
     return {
       level: "B",
@@ -245,6 +257,8 @@ export function buildRecommendation(request, products, strains) {
       bowel_status: request.bowel_status || "",
       stress_sleep: request.stress_sleep || "",
       primary_goal: request.primary_goal || "",
+      primary_goals: request.primary_goals || [],
+      concerns: request.concerns || [],
       special_conditions: request.special_conditions || [],
       description: request.description || ""
     },
@@ -264,8 +278,8 @@ export function buildRecommendation(request, products, strains) {
       "腸道平衡",
       request.eating_out_frequency === "幾乎每天" || request.eating_out_frequency === "每週 4-6 次" ? "外食壓力" : "",
       request.bowel_status !== "大致規律" ? "排便規律" : "",
-      request.age_range === "65 歲以上" || request.primary_goal === "熟齡健康管理" ? "熟齡保養" : "",
-      request.primary_goal === "長期營養支持" ? "長期營養支持" : ""
+      request.age_range === "65 歲以上" || request.primary_goals?.includes("熟齡健康管理") || request.concerns?.includes("熟齡保養") ? "熟齡保養" : "",
+      request.primary_goals?.includes("長期營養支持") || request.concerns?.includes("長期保養") ? "長期營養支持" : ""
     ]),
     attention_notes: attentionNotes,
     sales_talk:

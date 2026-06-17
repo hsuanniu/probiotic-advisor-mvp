@@ -23,7 +23,7 @@ recommendationRoutes.post("/", async (req, res) => {
     confidence_score: recommendation.confidence_score,
     gut_health_score: recommendation.gut_health_score,
     plan_level: recommendation.plan_recommendation.level,
-    primary_goal: req.body.primary_goal
+    primary_goal: req.body.primary_goal || req.body.primary_goals?.join("、") || ""
   });
 
   recommendation.recommendation_log_id = Number(recommendationLogId);

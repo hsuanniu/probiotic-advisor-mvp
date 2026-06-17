@@ -6,9 +6,16 @@ import EmptyState from "../components/EmptyState.jsx";
 
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useState([]);
+  const [notice, setNotice] = useState("");
 
   async function load() {
-    setFavorites(await api.getFavorites());
+    try {
+      setFavorites(await api.getFavorites());
+      setNotice("");
+    } catch {
+      setFavorites([]);
+      setNotice("目前無法連線到後端，收藏資料暫以空狀態顯示。");
+    }
   }
 
   useEffect(() => {
@@ -16,8 +23,13 @@ export default function FavoritesPage() {
   }, []);
 
   async function remove(id) {
-    await api.deleteFavorite(id);
-    await load();
+    try {
+      await api.deleteFavorite(id);
+      await load();
+    } catch {
+      setFavorites((current) => current.filter((favorite) => favorite.id !== id));
+      setNotice("目前無法連線到後端，已先從畫面移除此收藏。");
+    }
   }
 
   return (
@@ -28,6 +40,7 @@ export default function FavoritesPage() {
           <h2>收藏菌種與產品</h2>
           <p>將常用菌種與產品保存成個人資料庫，方便後續分析與推薦情境使用。</p>
         </div>
+        {notice && <span className="success-pill">{notice}</span>}
       </section>
 
       <section className="table-panel">

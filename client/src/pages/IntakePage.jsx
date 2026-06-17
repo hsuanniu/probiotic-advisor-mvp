@@ -3,12 +3,14 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Send } from "lucide-react
 import { api } from "../api/client.js";
 import Disclaimer from "../components/Disclaimer.jsx";
 import FormField from "../components/FormField.jsx";
+import { buildLocalRecommendation } from "../utils/offlineAdvisor.js";
 
 const ageOptions = ["18-29 歲", "30-44 歲", "45-64 歲", "65 歲以上"];
 const eatingOutOptions = ["幾乎不外食", "每週 1-3 次", "每週 4-6 次", "幾乎每天"];
 const bowelOptions = ["大致規律", "偶爾不規律", "經常不規律", "偏硬或偏稀"];
 const stressOptions = ["睡眠與壓力大致穩定", "偶爾睡不好或壓力較高", "經常睡不好或壓力較高"];
-const goalOptions = ["日常腸胃保養", "外食族保養", "熟齡健康管理", "女性日常保養", "長期營養支持", "其他"];
+const goalOptions = ["日常腸胃保養", "外食族保養", "熟齡健康管理", "女性日常保養", "長期營養支持", "高規格保養", "其他"];
+const concernOptions = ["排便不規律", "外食壓力", "睡眠壓力", "熟齡保養", "長期保養", "高規格保養", "女性日常保養"];
 
 const goalToNeeds = {
   "日常腸胃保養": ["腸胃順暢", "日常保養"],
@@ -16,17 +18,31 @@ const goalToNeeds = {
   "熟齡健康管理": ["日常保養", "排便調整"],
   "女性日常保養": ["女性私密保養", "日常保養"],
   "長期營養支持": ["日常保養", "熬夜族"],
+  "高規格保養": ["日常保養", "熬夜族"],
   "其他": ["日常保養"]
 };
 
-function OptionGroup({ label, options, value, onChange, mobileColumns = 1 }) {
+function unique(items) {
+  return [...new Set(items.filter(Boolean))];
+}
+
+function toggle(list, item) {
+  return list.includes(item) ? list.filter((value) => value !== item) : [...list, item];
+}
+
+function OptionGroup({ label, options, value, onChange, mobileColumns = 1, multiple = false }) {
+  const selectedValues = multiple ? value : [value];
   return (
     <fieldset className={mobileColumns === 2 ? "choice-panel mobile-two-column" : "choice-panel"}>
       <legend>{label}</legend>
       <div className="choice-grid choice-grid-large">
         {options.map((option) => (
-          <label className={value === option ? "choice-chip selected" : "choice-chip"} key={option}>
-            <input type="radio" checked={value === option} onChange={() => onChange(option)} />
+          <label className={selectedValues.includes(option) ? "choice-chip selected" : "choice-chip"} key={option}>
+            <input
+              type={multiple ? "checkbox" : "radio"}
+              checked={selectedValues.includes(option)}
+              onChange={() => onChange(option)}
+            />
             <span>{option}</span>
           </label>
         ))}
@@ -44,7 +60,8 @@ export default function IntakePage({ mode, setRecommendation, setPage }) {
     eating_out_frequency: "每週 1-3 次",
     bowel_status: "大致規律",
     stress_sleep: "睡眠與壓力大致穩定",
-    primary_goal: "日常腸胃保養",
+    primary_goals: ["日常腸胃保養"],
+    concerns: [],
     description: ""
   });
 
@@ -66,23 +83,29 @@ export default function IntakePage({ mode, setRecommendation, setPage }) {
     }, 650);
 
     try {
+      const primaryGoals = form.primary_goals.length ? form.primary_goals : ["日常腸胃保養"];
       const targetGroup =
         form.age_range === "65 歲以上"
           ? "長者"
-          : form.primary_goal === "女性日常保養"
+          : primaryGoals.includes("女性日常保養")
             ? "女性"
             : "成人";
       const ageMap = { "18-29 歲": 24, "30-44 歲": 37, "45-64 歲": 54, "65 歲以上": 68 };
+      const needs = unique(primaryGoals.flatMap((goal) => goalToNeeds[goal] || ["日常保養"]));
       const result = await api.createRecommendation({
         ...form,
+        primary_goal: primaryGoals.join("、"),
         user_type: mode,
         age: ageMap[form.age_range],
         target_group: targetGroup,
-        needs: goalToNeeds[form.primary_goal],
+        needs,
         lifestyle: `${form.eating_out_frequency}；${form.stress_sleep}`,
         special_conditions: []
       });
       setRecommendation(result);
+      setPage("result");
+    } catch {
+      setRecommendation(buildLocalRecommendation(form, mode));
       setPage("result");
     } finally {
       clearInterval(stageTimer);
@@ -118,12 +141,18 @@ export default function IntakePage({ mode, setRecommendation, setPage }) {
           <section className="flow-panel">
             <div className="flow-copy">
               <p className="eyebrow">Step 1 of 4</p>
-              <h3>基本資料與最大保健目標</h3>
-              <p>先確認年齡區間、性別與最想持續管理的日常保養方向。</p>
+              <h3>基本資料與保健目標</h3>
+              <p>先確認年齡區間、性別與想持續管理的日常保養方向，可複選。</p>
             </div>
             <OptionGroup label="1. 年齡區間" options={ageOptions} value={form.age_range} onChange={(value) => update("age_range", value)} mobileColumns={2} />
             <OptionGroup label="2. 性別" options={["不指定", "女性", "男性", "其他"]} value={form.gender} onChange={(value) => update("gender", value)} mobileColumns={2} />
-            <OptionGroup label="3. 最大保健目標" options={goalOptions} value={form.primary_goal} onChange={(value) => update("primary_goal", value)} />
+            <OptionGroup
+              label="3. 最大保健目標（可複選）"
+              options={goalOptions}
+              value={form.primary_goals}
+              multiple
+              onChange={(value) => update("primary_goals", toggle(form.primary_goals, value))}
+            />
             <div className="flow-actions">
               <button className="primary-action" type="button" onClick={() => goToStep(2)}>
                 下一步：生活型態
@@ -143,7 +172,14 @@ export default function IntakePage({ mode, setRecommendation, setPage }) {
             <OptionGroup label="4. 外食頻率" options={eatingOutOptions} value={form.eating_out_frequency} onChange={(value) => update("eating_out_frequency", value)} mobileColumns={2} />
             <OptionGroup label="5. 排便狀況" options={bowelOptions} value={form.bowel_status} onChange={(value) => update("bowel_status", value)} mobileColumns={2} />
             <OptionGroup label="6. 壓力 / 睡眠狀況" options={stressOptions} value={form.stress_sleep} onChange={(value) => update("stress_sleep", value)} />
-            <FormField label="7. 其他想補充的健康目標（選填）">
+            <OptionGroup
+              label="7. 困擾狀況（可複選）"
+              options={concernOptions}
+              value={form.concerns}
+              multiple
+              onChange={(value) => update("concerns", toggle(form.concerns, value))}
+            />
+            <FormField label="8. 其他想補充的健康目標（選填）">
               <textarea value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="例如：希望建立穩定飲食與日常營養補充習慣。" />
             </FormField>
             <Disclaimer />

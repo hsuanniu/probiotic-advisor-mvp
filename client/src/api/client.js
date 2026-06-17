@@ -13,13 +13,18 @@ function getDefaultApiBaseUrl() {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl();
 
 async function request(path, options = {}) {
+  const controller = new AbortController();
+  const { timeoutMs = 3000, ...fetchOptions } = options;
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {})
+      ...(fetchOptions.headers || {})
     },
-    ...options
-  });
+    ...fetchOptions,
+    signal: controller.signal
+  }).finally(() => window.clearTimeout(timeoutId));
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));

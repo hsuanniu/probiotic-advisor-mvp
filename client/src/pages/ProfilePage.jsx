@@ -4,6 +4,7 @@ import { api } from "../api/client.js";
 import Disclaimer from "../components/Disclaimer.jsx";
 import FormField from "../components/FormField.jsx";
 import { SkeletonList } from "../components/Skeleton.jsx";
+import { getOfflineProfile, updateOfflineProfile } from "../utils/offlineAdvisor.js";
 
 const needOptions = ["日常腸胃保養", "外食族保養", "熟齡健康管理", "女性日常保養", "長期營養支持", "其他"];
 
@@ -14,9 +15,26 @@ function toggle(list, item) {
 export default function ProfilePage() {
   const [profile, setProfile] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    api.getProfile().then(setProfile);
+    const fallbackTimer = window.setTimeout(() => {
+      setProfile((current) => current || getOfflineProfile());
+      setNotice("目前使用本機 demo Profile，避免頁面停在讀取。");
+    }, 3000);
+
+    api.getProfile()
+      .then((data) => {
+        setProfile(data || getOfflineProfile());
+        setNotice("");
+      })
+      .catch(() => {
+        setProfile(getOfflineProfile());
+        setNotice("目前無法連線到後端，已改用本機 Profile。");
+      })
+      .finally(() => window.clearTimeout(fallbackTimer));
+
+    return () => window.clearTimeout(fallbackTimer);
   }, []);
 
   function update(field, value) {
@@ -26,8 +44,14 @@ export default function ProfilePage() {
 
   async function submit(event) {
     event.preventDefault();
-    const updated = await api.updateProfile(profile);
-    setProfile(updated);
+    try {
+      const updated = await api.updateProfile(profile);
+      setProfile(updated);
+      setNotice("");
+    } catch {
+      setProfile(updateOfflineProfile(profile));
+      setNotice("目前無法連線到後端，已儲存在本機 Profile。");
+    }
     setSaved(true);
   }
 
@@ -54,6 +78,7 @@ export default function ProfilePage() {
           <h2>使用者 Profile</h2>
           <p>建立固定的健康需求與飲食習慣，讓平台更像持續使用的 AI 健康顧問。</p>
         </div>
+        {notice && <span className="success-pill">{notice}</span>}
       </section>
 
       <form className="admin-form profile-form" onSubmit={submit}>

@@ -18,6 +18,13 @@ import Disclaimer from "../components/Disclaimer.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import FormField from "../components/FormField.jsx";
 import { SkeletonList } from "../components/Skeleton.jsx";
+import {
+  createOfflineCheckin,
+  createOfflineDailyLog,
+  getOfflineJourney,
+  getOfflineJourneys,
+  updateOfflineReminder
+} from "../utils/offlineAdvisor.js";
 
 const checkpoints = [
   { day: 1, title: "建立挑戰", description: "完成生活型態評估並記錄起始分數。" },
@@ -57,11 +64,19 @@ export default function JourneyPage({ setPage }) {
   const [journey, setJourney] = useState(null);
   const [checkin, setCheckin] = useState(initialCheckin);
   const [message, setMessage] = useState("");
+  const [notice, setNotice] = useState("");
 
   async function load() {
-    const list = await api.getJourneys();
-    setJourneys(list);
-    if (list.length) setJourney(await api.getJourney(list[0].id));
+    try {
+      const list = await api.getJourneys();
+      setJourneys(list || []);
+      if (list?.length) setJourney(await api.getJourney(list[0].id));
+    } catch {
+      const offlineJourneys = getOfflineJourneys();
+      setJourneys(offlineJourneys);
+      if (offlineJourneys.length) setJourney(getOfflineJourney(offlineJourneys[0].id));
+      setNotice("目前無法連線到後端，已改用本機 90 天旅程資料。");
+    }
   }
 
   useEffect(() => {
@@ -74,9 +89,15 @@ export default function JourneyPage({ setPage }) {
   }
 
   async function logToday(status) {
-    const updated = await api.createDailyLog(journey.id, { status });
-    setJourney(updated);
-    setMessage(status === "taken" ? "今日已完成打卡，持續累積你的健康習慣。" : "已記錄今天略過，明天再繼續即可。");
+    try {
+      const updated = await api.createDailyLog(journey.id, { status });
+      setJourney(updated);
+    } catch {
+      setJourney(createOfflineDailyLog(journey.id, { status }));
+      setNotice("已使用本機資料儲存今日打卡。");
+    } finally {
+      setMessage(status === "taken" ? "今日已完成打卡，持續累積你的健康習慣。" : "已記錄今天略過，明天再繼續即可。");
+    }
   }
 
   async function submitCheckin(event) {
@@ -84,14 +105,26 @@ export default function JourneyPage({ setPage }) {
     const checkpointDay = availableCheckinDays.includes(checkin.checkpoint_day)
       ? checkin.checkpoint_day
       : availableCheckinDays[0];
-    const updated = await api.createJourneyCheckin(journey.id, { ...checkin, checkpoint_day: checkpointDay });
-    setJourney(updated);
-    setMessage(`Day ${checkin.checkpoint_day} 回報已儲存。`);
+    try {
+      const updated = await api.createJourneyCheckin(journey.id, { ...checkin, checkpoint_day: checkpointDay });
+      setJourney(updated);
+    } catch {
+      setJourney(createOfflineCheckin(journey.id, { ...checkin, checkpoint_day: checkpointDay }));
+      setNotice("已使用本機資料儲存階段回報。");
+    } finally {
+      setMessage(`Day ${checkpointDay} 回報已儲存。`);
+    }
   }
 
   async function updateReminder(reminder, payload, feedback) {
-    await api.updateReminder(reminder.id, payload);
-    setJourney(await api.getJourney(journey.id));
+    try {
+      await api.updateReminder(reminder.id, payload);
+      setJourney(await api.getJourney(journey.id));
+    } catch {
+      updateOfflineReminder(reminder.id, payload);
+      setJourney(getOfflineJourney(journey.id));
+      setNotice("已使用本機資料更新提醒狀態。");
+    }
     setMessage(feedback);
   }
 
@@ -106,9 +139,10 @@ export default function JourneyPage({ setPage }) {
           icon={Route}
           title="尚未建立 90 天健康挑戰"
           description="請先完成生活型態評估並建立初始分數，再開始每日打卡與 Day 30、60、90 回報。"
-          actionLabel="開始生活型態評估"
+          actionLabel="開始 90 天挑戰"
           onAction={() => setPage("intake")}
         />
+        {notice && <p className="success-note">{notice}</p>}
         <Disclaimer />
       </main>
     );
@@ -129,6 +163,7 @@ export default function JourneyPage({ setPage }) {
           <p>方案 {journey.plan_level} · 目標：{journey.primary_goal} · 起始分數 {journey.initial_score} 分</p>
         </div>
         {message && <span className="success-pill">{message}</span>}
+        {!message && notice && <span className="success-pill">{notice}</span>}
       </section>
 
       <section className={journey.today_log ? "daily-check-card completed" : "daily-check-card"}>

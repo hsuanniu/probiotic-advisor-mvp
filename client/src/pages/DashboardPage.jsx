@@ -4,6 +4,7 @@ import { api } from "../api/client.js";
 import Disclaimer from "../components/Disclaimer.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { SkeletonList } from "../components/Skeleton.jsx";
+import { getDemoDashboard } from "../utils/offlineAdvisor.js";
 
 function StatCard({ icon: Icon, label, value }) {
   return (
@@ -36,9 +37,35 @@ function RankingList({ title, items, emptyText }) {
 
 export default function DashboardPage({ setPage }) {
   const [dashboard, setDashboard] = useState(null);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    api.getDashboard().then(setDashboard);
+    let active = true;
+    const fallbackTimer = window.setTimeout(() => {
+      if (!active) return;
+      setDashboard(getDemoDashboard());
+      setNotice("目前使用 demo 工作台資料，避免頁面停在讀取狀態。");
+    }, 3000);
+
+    async function load() {
+      try {
+        const data = await api.getDashboard();
+        if (!active) return;
+        setDashboard(data || getDemoDashboard());
+      } catch {
+        if (!active) return;
+        setDashboard(getDemoDashboard());
+        setNotice("目前無法連線到後端，已改用 demo 工作台資料。");
+      } finally {
+        window.clearTimeout(fallbackTimer);
+      }
+    }
+
+    load();
+    return () => {
+      active = false;
+      window.clearTimeout(fallbackTimer);
+    };
   }, []);
 
   if (!dashboard) {
@@ -64,6 +91,7 @@ export default function DashboardPage({ setPage }) {
           <h2>健康分析 Dashboard</h2>
           <p>追蹤最近生活評估、熱門保養目標與 90 天健康旅程，建立持續使用的健康顧問工作台。</p>
         </div>
+        {notice && <span className="success-pill">{notice}</span>}
         <button className="primary-action" type="button" onClick={() => setPage("intake")}>
           <RotateCcw size={18} />
           建立新分析

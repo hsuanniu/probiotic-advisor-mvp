@@ -5,17 +5,20 @@ const valueCards = [
   {
     title: "生活型態評估",
     description: "透過 7 題短問卷整理外食、排便、睡眠壓力與最大保健目標。",
-    icon: Sparkles
+    icon: Sparkles,
+    page: "intake"
   },
   {
     title: "腸道健康分數",
     description: "將日常狀態轉換成容易理解的分數、四象指標與 A/B/C 方案等級。",
-    icon: Gauge
+    icon: Gauge,
+    page: "dashboard"
   },
   {
     title: "90 天持續追蹤",
     description: "在 Day 1、30、60、90 記錄生活狀態，搭配食用、回報與回購提醒。",
-    icon: Route
+    icon: Route,
+    page: "journey"
   }
 ];
 
@@ -51,8 +54,8 @@ export default function HomePage({ mode, setMode, setPage }) {
           </div>
         </div>
         <div className="hero-visual" aria-label="平台重點">
-          {valueCards.map(({ title, description, icon: Icon }) => (
-            <article className="value-card" key={title}>
+          {valueCards.map(({ title, description, icon: Icon, page }) => (
+            <button className="value-card clickable" key={title} type="button" onClick={() => setPage(page)}>
               <span className="value-icon">
                 <Icon size={22} />
               </span>
@@ -60,7 +63,8 @@ export default function HomePage({ mode, setMode, setPage }) {
                 <h3>{title}</h3>
                 <p>{description}</p>
               </div>
-            </article>
+              <ArrowRight size={18} className="value-arrow" />
+            </button>
           ))}
         </div>
       </section>

@@ -12,6 +12,7 @@ import {
 import { api } from "../api/client.js";
 import Disclaimer from "../components/Disclaimer.jsx";
 import EmptyState from "../components/EmptyState.jsx";
+import { createOfflineJourney } from "../utils/offlineAdvisor.js";
 
 const planLevels = [
   {
@@ -50,6 +51,7 @@ function getFourAspectScores(summary, healthScore) {
 export default function RecommendationResultPage({ recommendation, setPage }) {
   const [journey, setJourney] = useState(null);
   const [creatingJourney, setCreatingJourney] = useState(false);
+  const [notice, setNotice] = useState("");
 
   if (!recommendation) {
     return (
@@ -81,6 +83,15 @@ export default function RecommendationResultPage({ recommendation, setPage }) {
         primary_goal: summary.primary_goal
       });
       setJourney(created);
+      setNotice("");
+    } catch {
+      setJourney(createOfflineJourney({
+        recommendation_log_id: recommendation.recommendation_log_id,
+        initial_score: healthScore,
+        plan_level: recommendedPlan.level,
+        primary_goal: summary.primary_goal
+      }));
+      setNotice("目前無法連線到後端，已使用本機資料建立 90 天旅程。");
     } finally {
       setCreatingJourney(false);
     }
@@ -103,6 +114,7 @@ export default function RecommendationResultPage({ recommendation, setPage }) {
             重新分析
           </button>
         </div>
+        {notice && <span className="success-pill">{notice}</span>}
       </section>
 
       <Disclaimer />
