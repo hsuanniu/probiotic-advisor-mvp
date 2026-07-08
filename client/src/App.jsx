@@ -9,6 +9,7 @@ import DashboardPage from "./pages/DashboardPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import FavoritesPage from "./pages/FavoritesPage.jsx";
 import JourneyPage from "./pages/JourneyPage.jsx";
+import MyPage from "./pages/MyPage.jsx";
 
 export default function App() {
   const [page, setPage] = useState("home");
@@ -27,6 +28,7 @@ export default function App() {
       {page === "dashboard" && <DashboardPage setPage={navigateTo} />}
       {page === "intake" && <IntakePage mode={mode} setRecommendation={setRecommendation} setPage={navigateTo} />}
       {page === "result" && <RecommendationResultPage mode={mode} recommendation={recommendation} setPage={navigateTo} />}
+      {page === "my" && <MyPage setPage={navigateTo} />}
       {page === "favorites" && <FavoritesPage />}
       {page === "profile" && <ProfilePage />}
       {page === "journey" && <JourneyPage setPage={navigateTo} />}
